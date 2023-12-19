@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.chatfag.databinding.ActivityCadastroBinding
 import com.example.chatfag.model.Usuario
+import com.example.chatfag.util.exibirMensagem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
@@ -83,9 +84,9 @@ class CadastroActivity : AppCompatActivity() {
             .document(usuario.id)
             .set(usuario)
             .addOnSuccessListener {
-                Toast.makeText(this, "Cadastro feito com sucesso", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Salvo no fireStore")
             }.addOnFailureListener { exception ->
-                Toast.makeText(this, "Erro ao salvar no Firestore: ${exception.message}", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Erro ao salvar no Firestore: ")
             }
     }
 

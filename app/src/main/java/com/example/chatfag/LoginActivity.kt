@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import com.example.chatfag.databinding.ActivityLoginBinding
+import com.example.chatfag.util.exibirMensagem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -37,8 +38,8 @@ class LoginActivity : AppCompatActivity() {
     private fun verificarUsuarioLogado() {
         val usuarioAtual = firebaseAuth.currentUser
         if (usuarioAtual != null){
-            startActivity(Intent(this, CadastroActivity::class.java))
-            finish()
+            startActivity(
+                Intent(this, MainActivity::class.java))
         }
     }
 
@@ -49,7 +50,6 @@ class LoginActivity : AppCompatActivity() {
         binding.btnLogin.setOnClickListener {
             if (validarCampos()) {
                 logarUsuario()
-
             }
         }
     }
@@ -58,7 +58,7 @@ class LoginActivity : AppCompatActivity() {
         firebaseAuth.signInWithEmailAndPassword(
             email, senha
         ).addOnSuccessListener {
-            Toast.makeText(this, "Logado com sucesso", Toast.LENGTH_SHORT).show()
+            exibirMensagem("Logado com sucesso")
             startActivity(
                 Intent(this, MainActivity::class.java)
             )
@@ -67,32 +67,33 @@ class LoginActivity : AppCompatActivity() {
                 throw erro
             } catch (erroUsuarioInvalido: FirebaseAuthInvalidUserException) {
                 erroUsuarioInvalido.printStackTrace()
-                Toast.makeText(this, "Email Não cadastrado", Toast.LENGTH_SHORT).show()
+                exibirMensagem("E-mail não cadastrado")
             } catch (erroCredencialInvalida: FirebaseAuthInvalidCredentialsException) {
                 erroCredencialInvalida.printStackTrace()
-                Toast.makeText(this, "Email ou senha estão incorretas", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Email ou senha estão incorretas")
             }
         }
     }
-
 
     private fun validarCampos(): Boolean {
         email = binding.textEditEmail.text.toString()
         senha = binding.textEditSenha.text.toString()
 
         if (email.isNotEmpty()) {
-            binding.textInputLayoutLoginEmail.error = null
 
+            binding.textInputLayoutLoginEmail.error = null
             if (senha.isNotEmpty()) {
                 binding.textInputLayoutSenhaLogin.error = null
                 return true
-            }else {
-                binding.textInputLayoutLoginEmail.error = "Preencha a senha"
+            }else{
+                binding.textInputLayoutSenhaLogin.error = "Preencha corretamente sua senha"
+                return false
             }
+
         }else {
-            binding.textInputLayoutSenhaLogin.error = "Preencha seu email"
+            binding.textInputLayoutLoginEmail.error = "Preencha seu email"
+            return false
         }
-        return false
     }
 }
 

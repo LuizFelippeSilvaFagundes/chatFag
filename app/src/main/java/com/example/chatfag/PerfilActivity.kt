@@ -5,20 +5,19 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.chatfag.databinding.ActivityPerfilBinding
 import com.example.chatfag.util.exibirMensagem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-
 
 class PerfilActivity : AppCompatActivity() {
 
     private val binding by lazy {
-        ActivityPerfilBinding.inflate(layoutInflater)
+        ActivityPerfilBinding.inflate( layoutInflater )
     }
     private var temPermissaoCamera = false
     private var temPermissaoGaleria = false
@@ -29,94 +28,114 @@ class PerfilActivity : AppCompatActivity() {
     private val storage by lazy {
         FirebaseStorage.getInstance()
     }
+    private val firestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
 
     private val gerenciadorGaleria = registerForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            binding.imagePerfil.setImageURI(uri)
-            uploadImagemStorage(uri)
-        } else {
+    ){ uri ->
+        if( uri != null ){
+            binding.imagePerfil.setImageURI( uri )
+            uploadImagemStorage( uri )
+        }else{
             exibirMensagem("Nenhuma imagem selecionada")
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(binding.root)
+        setContentView( binding.root )
         inicializarToolbar()
         solicitarPermissoes()
         inicializarEventosClique()
     }
 
     private fun uploadImagemStorage(uri: Uri) {
+
+        // fotos -> usuarios -> idUsuario -> perfil.jpg
         val idUsuario = firebaseAuth.currentUser?.uid
-        Log.d("PerfilActivity", "ID do Usuário: $idUsuario")
-        if (idUsuario != null) {
-            Log.d("PerfilActivity", "Iniciando upload da imagem")
+        if( idUsuario != null ){
+
             storage
                 .getReference("fotos")
                 .child("usuarios")
                 .child(idUsuario)
                 .child("perfil.jpg")
-                .putFile(uri)
+                .putFile( uri )
                 .addOnSuccessListener { task ->
-                    Log.d("PerfilActivity", "Sucesso ao fazer upload da imagem")
+
                     exibirMensagem("Sucesso ao fazer upload da imagem")
-                }
-                .addOnFailureListener {
-                    Log.e("PerfilActivity", "Erro ao fazer upload da imagem", it)
+                    task.metadata
+                        ?.reference
+                        ?.downloadUrl
+                        ?.addOnSuccessListener { url ->
+
+                            val dados = mapOf(
+                                "foto" to url.toString()
+                            )
+                            atualizarDadosPerfil( idUsuario, dados )
+
+                        }
+
+                }.addOnFailureListener {
                     exibirMensagem("Erro ao fazer upload da imagem")
                 }
-        } else {
-            Log.d("PerfilActivity", "ID do Usuário é nulo")
+
         }
+
+
     }
 
+    private fun atualizarDadosPerfil(idUsuario: String, dados: Map<String, String>) {
+
+        // Atualizar nome no Firestore
+        firestore
+            .collection("usuarios")
+            .document(idUsuario)
+            .update(dados)
+            .addOnSuccessListener {
+                exibirMensagem("Sucesso ao atualizar nome do perfil no Firestore!")
+            }
+            .addOnFailureListener {
+                exibirMensagem("Erro ao atualizar nome do perfil no Firestore")
+            }
+    }
 
     private fun inicializarEventosClique() {
+
         binding.fabSelecionar.setOnClickListener {
-            if (temPermissaoGaleria) {
+            if( temPermissaoGaleria ){
                 gerenciadorGaleria.launch("image/*")
-            } else {
+            }else{
                 exibirMensagem("Não tem permissão para acessar galeria")
                 solicitarPermissoes()
             }
         }
 
-        // Adicione este bloco para o clique no botão de atualização do nome
         binding.btnAtualizarNome.setOnClickListener {
-            atualizarNomeUsuario()
-        }
-    }
 
-    private fun atualizarNomeUsuario() {
-        val novoNome = binding.editTextNome.text.toString().trim()
+            val nomeUsuario = binding.editTextNome.text.toString()
+            if( nomeUsuario.isNotEmpty() ){
 
-        if (novoNome.isNotEmpty()) {
-            // Atualize o nome do usuário no Firebase
-            val idUsuario = firebaseAuth.currentUser?.uid
-            if (idUsuario != null) {
-                val profileUpdates = userProfileChangeRequest {
-                    displayName = novoNome
+                val idUsuario = firebaseAuth.currentUser?.uid
+                if( idUsuario != null ){
+                    val dados = mapOf(
+                        "nome" to nomeUsuario
+                    )
+                    atualizarDadosPerfil( idUsuario, dados )
                 }
 
-                firebaseAuth.currentUser?.updateProfile(profileUpdates)
-                    ?.addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            exibirMensagem("Nome atualizado com sucesso")
-                        } else {
-                            exibirMensagem("Erro ao atualizar o nome")
-                        }
-                    }
+            }else{
+                exibirMensagem("Preencha o nome para atualizar")
             }
-        } else {
-            exibirMensagem("Por favor, digite um nome válido")
+
         }
+
     }
 
-
     private fun solicitarPermissoes() {
+
         //Verifico se usuário já tem permissão
         temPermissaoCamera = ContextCompat.checkSelfPermission(
             this,
@@ -125,49 +144,39 @@ class PerfilActivity : AppCompatActivity() {
 
         temPermissaoGaleria = ContextCompat.checkSelfPermission(
             this,
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.READ_MEDIA_IMAGES
         ) == PackageManager.PERMISSION_GRANTED
 
         //LISTA DE PERMISSÕES NEGADAS
         val listaPermissoesNegadas = mutableListOf<String>()
-        if (!temPermissaoCamera)
-            listaPermissoesNegadas.add(Manifest.permission.CAMERA)
-        if (!temPermissaoGaleria)
-            listaPermissoesNegadas.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        if( !temPermissaoCamera )
+            listaPermissoesNegadas.add( Manifest.permission.CAMERA )
+        if( !temPermissaoGaleria )
+            listaPermissoesNegadas.add( Manifest.permission.READ_MEDIA_IMAGES )
 
-        if (listaPermissoesNegadas.isNotEmpty()) {
+        if( listaPermissoesNegadas.isNotEmpty() ){
 
             //Solicitar multiplas permissões
             val gerenciadorPermissoes = registerForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
-            ) { permissoes ->
+            ){ permissoes ->
 
                 temPermissaoCamera = permissoes[Manifest.permission.CAMERA]
                     ?: temPermissaoCamera
 
-                temPermissaoGaleria = permissoes[Manifest.permission.READ_EXTERNAL_STORAGE]
+                temPermissaoGaleria = permissoes[Manifest.permission.READ_MEDIA_IMAGES]
                     ?: temPermissaoGaleria
 
-                if (temPermissaoGaleria) {
-                    //Se a permissão foi concedida, exibe a galeria
-                    gerenciadorGaleria.launch("image/*")
-                } else {
-                    //Se a permissão foi negada, exibe uma mensagem de erro
-                    exibirMensagem("Não tem permissão para acessar galeria")
-                }
-
             }
-            gerenciadorPermissoes.launch(listaPermissoesNegadas.toTypedArray())
+            gerenciadorPermissoes.launch( listaPermissoesNegadas.toTypedArray() )
 
         }
+
     }
-
-
-
 
     private fun inicializarToolbar() {
         val toolbar = binding.includeToolbarPerfil.tbToolbar
-        setSupportActionBar(toolbar)
+        setSupportActionBar( toolbar )
         supportActionBar?.apply {
             title = "Editar perfil"
             setDisplayHomeAsUpEnabled(true)
