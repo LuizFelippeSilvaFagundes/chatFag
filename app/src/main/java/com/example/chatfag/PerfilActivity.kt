@@ -117,7 +117,7 @@ class PerfilActivity : AppCompatActivity() {
 
 
     private fun solicitarPermissoes() {
-        //Verifico se usuário já tem permissão
+
         temPermissaoCamera = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
