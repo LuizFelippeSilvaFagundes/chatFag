@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "440397428116",
+    "project_id": "chat-fag",
+    "storage_bucket": "chat-fag.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:440397428116:android:a4dbc0b3a1097870cc4b81",
+        "android_client_info": {
+          "package_name": "com.example.chatfag"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2opwhDgTTqFFMbsrcZ7n86LJcq6uxt6w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
