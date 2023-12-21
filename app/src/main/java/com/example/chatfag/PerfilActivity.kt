@@ -1,18 +1,18 @@
 package com.example.chatfag
-
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.chatfag.databinding.ActivityPerfilBinding
 import com.example.chatfag.util.exibirMensagem
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.squareup.picasso.Picasso
 
 class PerfilActivity : AppCompatActivity() {
 
@@ -51,6 +51,38 @@ class PerfilActivity : AppCompatActivity() {
         inicializarEventosClique()
     }
 
+    override fun onStart() {
+        super.onStart()
+        recuperarDadosIniciaisUsuarios()
+    }
+
+    private fun recuperarDadosIniciaisUsuarios() {
+        val idUsuario = firebaseAuth.currentUser?.uid
+        if( idUsuario != null ){
+
+            firestore
+                .collection("usuario")
+                .document( idUsuario )
+                .get()
+                .addOnSuccessListener { documentSnapshot ->
+
+                    val dadosUsuarios = documentSnapshot.data
+                    if( dadosUsuarios != null ){
+
+                        val nome = dadosUsuarios["nome"] as String
+                        val foto = dadosUsuarios["foto"] as String
+
+                        binding.editTextNome.setText( nome )
+                        if( foto.isNotEmpty() ){
+                            Picasso.get()
+                                .load( foto )
+                                .into( binding.imagePerfil )
+                        }
+                    }
+                }
+        }
+    }
+
     private fun uploadImagemStorage(uri: Uri) {
 
         // fotos -> usuarios -> idUsuario -> perfil.jpg
@@ -64,42 +96,34 @@ class PerfilActivity : AppCompatActivity() {
                 .child("perfil.jpg")
                 .putFile( uri )
                 .addOnSuccessListener { task ->
-
                     exibirMensagem("Sucesso ao fazer upload da imagem")
-                    task.metadata
-                        ?.reference
-                        ?.downloadUrl
-                        ?.addOnSuccessListener { url ->
-
-                            val dados = mapOf(
-                                "foto" to url.toString()
-                            )
-                            atualizarDadosPerfil( idUsuario, dados )
-
-                        }
-
-                }.addOnFailureListener {
-                    exibirMensagem("Erro ao fazer upload da imagem")
+                    task.metadata?.reference?.downloadUrl?.addOnSuccessListener { uri ->
+                        val dados = mapOf("foto" to uri.toString())
+                        atualizarDadosPerfil(idUsuario, dados)
+                    } ?: exibirMensagem("URI da imagem é nulo.")
                 }
-
         }
-
-
     }
 
     private fun atualizarDadosPerfil(idUsuario: String, dados: Map<String, String>) {
+        Log.i("TOKEN", "O id é: $idUsuario")
+        if (idUsuario != null && dados.isNotEmpty()) {
 
-        // Atualizar nome no Firestore
-        firestore
-            .collection("usuarios")
-            .document(idUsuario)
-            .update(dados)
-            .addOnSuccessListener {
-                exibirMensagem("Sucesso ao atualizar nome do perfil no Firestore!")
-            }
-            .addOnFailureListener {
-                exibirMensagem("Erro ao atualizar nome do perfil no Firestore")
-            }
+            firestore
+                .collection("usuario")
+                .document(idUsuario)
+                .update(dados)
+                .addOnSuccessListener {
+                    exibirMensagem("Sucesso ao atualizar perfil!")
+                }
+                .addOnFailureListener { e ->
+                    Log.i("TOKEN", "O id é: $e")
+                    exibirMensagem("Erro ao atualizar perfil: ${e.message}")
+                }
+        } else {
+            exibirMensagem("ID do usuário ou dados estão vazios.")
+        }
+
     }
 
     private fun inicializarEventosClique() {
@@ -120,32 +144,24 @@ class PerfilActivity : AppCompatActivity() {
 
                 val idUsuario = firebaseAuth.currentUser?.uid
                 if( idUsuario != null ){
-                    val dados = mapOf(
-                        "nome" to nomeUsuario
-                    )
-                    atualizarDadosPerfil( idUsuario, dados )
+                    val dados = mapOf("nome" to nomeUsuario)
+                    atualizarDadosPerfil(idUsuario, dados )
                 }
-
             }else{
                 exibirMensagem("Preencha o nome para atualizar")
             }
-
         }
-
     }
 
     private fun solicitarPermissoes() {
 
         //Verifico se usuário já tem permissão
         temPermissaoCamera = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
+            this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
         temPermissaoGaleria = ContextCompat.checkSelfPermission(
             this,
-            Manifest.permission.READ_MEDIA_IMAGES
-        ) == PackageManager.PERMISSION_GRANTED
+            Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
 
         //LISTA DE PERMISSÕES NEGADAS
         val listaPermissoesNegadas = mutableListOf<String>()
@@ -158,8 +174,7 @@ class PerfilActivity : AppCompatActivity() {
 
             //Solicitar multiplas permissões
             val gerenciadorPermissoes = registerForActivityResult(
-                ActivityResultContracts.RequestMultiplePermissions()
-            ){ permissoes ->
+                ActivityResultContracts.RequestMultiplePermissions()){ permissoes ->
 
                 temPermissaoCamera = permissoes[Manifest.permission.CAMERA]
                     ?: temPermissaoCamera
@@ -182,4 +197,5 @@ class PerfilActivity : AppCompatActivity() {
             setDisplayHomeAsUpEnabled(true)
         }
     }
+
 }
