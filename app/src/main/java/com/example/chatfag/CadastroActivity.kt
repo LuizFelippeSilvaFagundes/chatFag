@@ -67,13 +67,13 @@ class CadastroActivity : AppCompatActivity() {
                 throw erro
             } catch (erro: FirebaseAuthInvalidCredentialsException) {
                 erro.printStackTrace()
-                Toast.makeText(this, "Email inválido, digite outro", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Email inválido, digite outro")
             } catch (erroExistente: FirebaseAuthUserCollisionException) {
                 erroExistente.printStackTrace()
-                Toast.makeText(this, "Este email já existe, digite outro", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Este email já existe, digite outro")
             } catch (erroSenhaFraca: FirebaseAuthWeakPasswordException) {
                 erroSenhaFraca.printStackTrace()
-                Toast.makeText(this, "Digite uma senha mais forte", Toast.LENGTH_SHORT).show()
+                exibirMensagem("Digite uma senha mais forte")
             }
         }
     }
